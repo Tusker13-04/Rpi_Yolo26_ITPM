@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>YOLOE-26 Inference — Edge Deployment Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #111111;
+  --surface:  #1a1a1a;
+  --border:   #2a2a2a;
+  --text:     #e8e8e8;
+  --muted:    #666666;
+  --accent:   #22c55e;
+  --error:    #ef4444;
+  --mono:     'IBM Plex Mono', monospace;
+  --sans:     'IBM Plex Sans', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Header ── */
+header {
+  height: 44px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 24px;
+}
+header .wordmark {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+header .sep  { color: var(--border); }
+header .desc { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+#statusBar   { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+/* ── Layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: calc(100vh - 44px);
+}
+
+/* ── Left panel (form) ── */
+.panel-left {
+  border-right: 1px solid var(--border);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+
+.field-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+/* File drop zone */
+.drop-zone {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 20px 16px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s;
+  background: var(--surface);
+}
+.drop-zone:hover, .drop-zone.active {
+  border-color: var(--text);
+}
+.drop-zone .hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.drop-zone .filename {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  margin-top: 6px;
+  word-break: break-all;
+}
+#fileInput { display: none; }
+
+/* Text inputs */
+input[type="text"] {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="text"]:focus { border-color: #555; }
+input[type="text"]::placeholder { color: var(--muted); }
+
+/* Sliders */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--muted);
+  height: 2px;
+}
+.slider-row .val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* Run button */
+.run-btn {
+  width: 100%;
+  padding: 9px 0;
+  background: var(--accent);
+  border: none;
+  border-radius: 2px;
+  color: #000;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.run-btn:hover  { opacity: 0.88; }
+.run-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 10px 8px;
+  border-radius: 2px;
+}
+.stat-cell .sv {
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 500;
+}
+.stat-cell .sk {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Detection table */
+.det-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.det-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.det-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #1e1e1e;
+  color: var(--text);
+}
+.conf-track {
+  width: 52px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.conf-fill { height: 100%; background: #555; border-radius: 1px; }
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Right panel (output) ── */
+.panel-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 32px;
+  gap: 16px;
+}
+.panel-right.has-result { justify-content: flex-start; }
+
+.placeholder-text {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.result-img {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  display: none;
+}
+
+/* Spinner */
+.spinner {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: #555;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="wordmark">YOLOE-26</span>
+  <span class="sep">|</span>
+  <span class="desc">Open-vocabulary object detection &middot; inference interface</span>
+  <span id="statusBar">ready</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── Left: form panel ── -->
+  <div class="panel-left">
+
+    <div class="field-group">
+      <label class="field-label">Input image</label>
+      <div class="drop-zone" id="dropZone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="ev(event,'dragover')"
+           ondragleave="ev(event,'dragleave')"
+           ondrop="ev(event,'drop')">
+        <div class="hint">Click to select or drag an image file</div>
+        <div class="filename" id="fileName">&mdash;</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*"/>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="prompt">Text prompt</label>
+      <input type="text" id="prompt"
+             placeholder="person . car . bicycle"
+             value="person . car . bicycle"/>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;">
+        Separate class names with &nbsp;<code>.</code>
+      </span>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Confidence threshold &nbsp;<span id="confVal">0.15</span></label>
+      <div class="slider-row">
+        <input type="range" id="conf" min="0.05" max="0.95" step="0.05" value="0.15"
+               oninput="document.getElementById('confVal').textContent=this.value"/>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">IoU threshold &nbsp;<span id="iouVal">0.45</span></label>
+      <div class="slider-row">
+        <input type="range" id="iou" min="0.10" max="0.90" step="0.05" value="0.45"
+               oninput="document.getElementById('iouVal').textContent=this.value"/>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="runInference()">Run inference</button>
+
+    <hr class="divider" id="statsDivider" style="display:none"/>
+
+    <!-- Stats block -->
+    <div id="statsBlock" style="display:none;display:flex;flex-direction:column;gap:14px">
+
+      <div class="field-group">
+        <label class="field-label">Inference statistics</label>
+        <div class="stats-grid">
+          <div class="stat-cell"><div class="sv" id="sMs">—</div><div class="sk">latency (ms)</div></div>
+          <div class="stat-cell"><div class="sv" id="sFps">—</div><div class="sk">est. FPS</div></div>
+          <div class="stat-cell"><div class="sv" id="sDet">—</div><div class="sk">detections</div></div>
+          <div class="stat-cell"><div class="sv" id="sSize">—</div><div class="sk">image size</div></div>
+        </div>
+      </div>
+
+      <div class="field-group" id="detTableWrap">
+        <label class="field-label">Detections</label>
+        <table class="det-table">
+          <thead>
+            <tr><th>Class</th><th>Conf.</th><th>W &times; H (px)</th></tr>
+          </thead>
+          <tbody id="detBody"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div><!-- /panel-left -->
+
+  <!-- ── Right: output panel ── -->
+  <div class="panel-right" id="panelRight">
+    <span class="placeholder-text" id="placeholder">No results yet.</span>
+    <div class="spinner" id="spinner"></div>
+    <img class="result-img" id="resultImg" alt="Detection output"/>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+"use strict";
+let file = null;
+
+// ── Drag-and-drop ────────────────────────────────────────────────
+function ev(e, type) {
+  e.preventDefault();
+  const dz = document.getElementById('dropZone');
+  if (type === 'dragover') { dz.classList.add('active'); return; }
+  if (type === 'dragleave') { dz.classList.remove('active'); return; }
+  if (type === 'drop') {
+    dz.classList.remove('active');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) setFile(f);
+  }
+}
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+function setFile(f) {
+  file = f;
+  document.getElementById('fileName').textContent = f.name;
+}
+
+// ── System status polling ────────────────────────────────────────
+async function pollStatus() {
+  try {
+    const r = await fetch('/system');
+    const d = await r.json();
+    document.getElementById('statusBar').textContent =
+      `cpu ${d.cpu_percent}%  mem ${d.ram_percent}%  ${d.cpu_temp}°C`;
+  } catch (_) {}
+}
+setInterval(pollStatus, 4000);
+pollStatus();
+
+// ── Run inference ────────────────────────────────────────────────
+async function runInference() {
+  if (!file)   { alert('No image selected.'); return; }
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) { alert('Text prompt is required.'); return; }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running\u2026';
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('resultImg').style.display = 'none';
+  document.getElementById('statsDivider').style.display = 'none';
+  document.getElementById('statsBlock').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('image', file);
+  fd.append('prompt', prompt);
+  fd.append('conf', document.getElementById('conf').value);
+  fd.append('iou',  document.getElementById('iou').value);
+
+  try {
+    const resp = await fetch('/infer', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.error) { alert('Error: ' + data.error); return; }
+
+    const s  = data.stats;
+    const ri = document.getElementById('resultImg');
+    ri.src   = 'data:image/jpeg;base64,' + data.image;
+    ri.style.display = 'block';
+
+    document.getElementById('sMs').textContent   = s.inference_ms;
+    document.getElementById('sFps').textContent  = s.fps_estimate;
+    document.getElementById('sDet').textContent  = s.num_detections;
+    document.getElementById('sSize').textContent = s.image_size;
+
+    const tbody = document.getElementById('detBody');
+    tbody.innerHTML = s.detections.map(d => {
+      const pct = Math.round(d.confidence * 100);
+      const bw  = d.box[2] - d.box[0];
+      const bh  = d.box[3] - d.box[1];
+      return `<tr>
+        <td>${d.label}</td>
+        <td>
+          <span class="conf-track"><span class="conf-fill" style="width:${pct}%"></span></span>
+          ${pct}%
+        </td>
+        <td>${bw}&times;${bh}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('statsDivider').style.display = 'block';
+    document.getElementById('statsBlock').style.display   = 'flex';
+    document.getElementById('panelRight').classList.add('has-result');
+
+  } catch (e) {
+    alert('Request failed: ' + e.message);
+    document.getElementById('placeholder').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run inference';
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>
