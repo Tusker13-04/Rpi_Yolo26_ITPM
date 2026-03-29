@@ -1,10 +1,10 @@
-# 🦅 YOLOE-26 on Raspberry Pi 4 — Edge Inference & Benchmarking
+# YOLOE-26 on Raspberry Pi 4 - Edge Inference & Benchmarking
 
-> **Run open-vocabulary YOLOE-26 (Nano / Small / Medium) on a Raspberry Pi 4 (CPU-only), benchmark per-image latency, and visualise results — all from a local Flask web UI or a single CLI command.**
+> **Run open-vocabulary YOLOE-26 (Nano / Small / Medium) on a Raspberry Pi 4 (CPU-only), benchmark per-image latency, and visualise results - all from a local Flask web UI or a single CLI command.**
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Project Structure](#project-structure)
@@ -17,6 +17,7 @@
   - [4. Latency Plot (`plot_benchmark.py`)](#4-latency-plot-plot_benchmarkpy)
   - [5. Accuracy vs Latency (`plot_device_accuracy.py`)](#5-accuracy-vs-latency-plot_device_accuracypy)
 - [Output & Results](#output--results)
+- [Screenshot](#screenshot)
 - [Benchmark Methodology](#benchmark-methodology)
 - [Configuration Reference](#configuration-reference)
 - [Troubleshooting](#troubleshooting)
@@ -25,7 +26,7 @@
 
 ## Overview
 
-This repository is part of the **ITPM project** and demonstrates how to deploy **YOLOE-26** — Ultralytics' open-vocabulary detection model — on a **Raspberry Pi 4** for real-world edge inference benchmarking.
+This repository is part of the **ITPM project** and demonstrates how to deploy **YOLOE-26** - Ultralytics' open-vocabulary detection model - on a **Raspberry Pi 4** for real-world edge inference benchmarking.
 
 Key goals:
 - **Run YOLOE-26s/n/m on RPi 4 CPU** with no GPU acceleration.
@@ -40,11 +41,11 @@ Key goals:
 ```
 Rpi_Yolo26_ITPM/
 │
-├── app.py                    # Flask web server — upload an image, see YOLOE-26 results
+├── app.py                    # Flask web server - upload an image, see YOLOE-26 results
 ├── infer_single.py           # CLI: infer one image, output JSON + annotated file
 ├── run_benchmark.sh          # Bash: batch infer a whole directory, produce CSV + plot
 ├── plot_benchmark.py         # Python: plot per-image latency bar chart from CSV
-├── plot_device_accuracy.py   # Python: Pareto curve — mAP vs latency for N/S/M variants
+├── plot_device_accuracy.py   # Python: Pareto curve - mAP vs latency for N/S/M variants
 │
 ├── templates/
 │   └── index.html            # Jinja2 template for the Flask web UI
@@ -76,7 +77,7 @@ Rpi_Yolo26_ITPM/
 | **psutil** | ≥ 5.9 |
 | **numpy** | ≥ 1.24 |
 
-> ⚠️ All inference runs **CPU-only** on the RPi 4. No CUDA, no NCNN, no ONNX runtime needed.
+> All inference runs **CPU-only** on the RPi 4. No CUDA, no NCNN, no ONNX runtime needed.
 
 ---
 
@@ -113,7 +114,7 @@ python3 app.py
 
 **Features:**
 - Upload any JPEG/PNG image (max 16 MB).
-- Enter a **dot-separated class prompt** (e.g. `person.car.bicycle`) — YOLOE-26's open-vocabulary interface means you can query *any* class names.
+- Enter a **dot-separated class prompt** (e.g. `person.car.bicycle`) - YOLOE-26's open-vocabulary interface means you can query *any* class names.
 - Adjust **confidence threshold** (`conf`, default `0.15`) and **IoU threshold** (`iou`, default `0.45`).
 - Returns annotated image (bounding boxes + labels) rendered in the browser.
 - **System stats panel**: CPU %, RAM used/total, CPU temperature (°C), Python version, platform.
@@ -184,7 +185,7 @@ chmod +x run_benchmark.sh
 2. Calls `infer_single.py` for each image, recording `inference_ms` and detection count.
 3. Writes `results.csv` to the image directory.
 4. Calls `plot_benchmark.py` to generate `benchmark_plot.pdf` + `.png`.
-5. Prints a **summary block** — N images, mean latency, estimated FPS — to the terminal.
+5. Prints a **summary block** - N images, mean latency, estimated FPS - to the terminal.
 
 **Output files:**
 ```
@@ -205,7 +206,7 @@ Standalone script to regenerate the benchmark bar chart from an existing `result
 python3 plot_benchmark.py \
     --csv   images/results.csv \
     --out   images/benchmark_plot.pdf \
-    --title "YOLOE-26s — Inference latency per image (RPi 4, CPU-only)"
+    --title "YOLOE-26s - Inference latency per image (RPi 4, CPU-only)"
 ```
 
 **Generated chart includes:**
@@ -218,7 +219,7 @@ python3 plot_benchmark.py \
 
 ### 5. Accuracy vs Latency (`plot_device_accuracy.py`)
 
-Evaluates all three YOLOE-26 variants — **Nano, Small, Medium** — on `coco8-seg.yaml` (COCO 8-image subset) at `imgsz=640, batch=1` on the RPi 4 CPU, then plots a **Pareto frontier** graph.
+Evaluates all three YOLOE-26 variants - **Nano, Small, Medium** - on `coco8-seg.yaml` (COCO 8-image subset) at `imgsz=640, batch=1` on the RPi 4 CPU, then plots a **Pareto frontier** graph.
 
 ```bash
 python3 plot_device_accuracy.py
@@ -254,12 +255,15 @@ runs/segment/
 ```
 
 ---
+## Screenshot
+<img width="1919" height="1024" alt="image" src="https://github.com/user-attachments/assets/a6f7266b-1e81-4990-813f-924bd3af4fbe" />
+
 
 ## Benchmark Methodology
 
 - **Device**: Raspberry Pi 4 Model B, CPU-only (no hardware acceleration).
 - **Model**: `yoloe-26s-seg.pt` (default), with variants `yoloe-26n-seg.pt` and `yoloe-26m-seg.pt` tested in accuracy plots.
-- **Timing**: `time.perf_counter()` wraps a single `model.predict()` call per image — includes preprocessing, forward pass, and NMS.
+- **Timing**: `time.perf_counter()` wraps a single `model.predict()` call per image - includes preprocessing, forward pass, and NMS.
 - **Batch size**: 1 (sequential edge inference).
 - **Input resolution**: native image resolution for single-image mode; `imgsz=640` for validation.
 - **FPS estimate**: `1000 / mean_inference_ms` (single-thread, no pipeline overlap).
@@ -288,7 +292,7 @@ runs/segment/
 | Model download hangs | Ensure internet access on first run; weights auto-download from Ultralytics Hub |
 | `/sys/class/thermal/...` error | CPU temp read is RPi-specific; returns `"N/A"` on non-RPi hardware automatically |
 | Flask server not reachable | Check RPi firewall, ensure `host="0.0.0.0"` is set (it is by default) |
-| `plot_device_accuracy.py` takes too long | Expected — full `.val()` on CPU can take 5–15 min per model on RPi 4 |
+| `plot_device_accuracy.py` takes too long | Expected - full `.val()` on CPU can take 5–15 min per model on RPi 4 |
 | `run_benchmark.sh: CSV_OUT not exported` | The `export CSV_OUT` at the end of the script handles this; ensure bash, not sh |
 
 ---
